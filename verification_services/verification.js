@@ -3,20 +3,21 @@ const multer = require('multer');
 const { google } = require('googleapis');
 const path = require('path');
 const fs = require('fs');
+const fsp = fs.promises;
 const router = express.Router();
 const cors = require('cors');
 const axios = require('axios');
 
 
 // Configurar Multer para manejar la carga de archivos
+const tmpDirectory = path.join('/tmp', 'uploads');
 const storage = multer.diskStorage({
-    destination:'uploads',
-    filename: function(req, file, callback){
-      const extension = file.originalname.split(".").pop()
-      callback(null, `${file.fieldname}-${Date.now()}.${extension}`)
-    }
-    
-})
+  destination: tmpDirectory,
+  filename: function(req, file, callback) {
+    const extension = file.originalname.split(".").pop();
+    callback(null, `${file.fieldname}-${Date.now()}.${extension}`);
+  },
+});
 
 const upload = multer({storage:storage})
 
@@ -93,6 +94,14 @@ router.post('/upload', upload.array('files'), async (req, res) => {
     // Concatenar carpetaUrl y carpetaMetadata.id en una sola variable
     const folderUrlWithId = folderUrl + '/' + folderMetadata.id;
     console.log('Folder URL:', folderUrlWithId);
+
+    // Borrar la carpeta temporal
+    try {
+      await fsp.rmdir(tmpDirectory, { recursive: true }); // Usar fs.promises.rmdir y asegurar el paso de { recursive: true } si el directorio no está vacío
+      console.log('Directorio temporal eliminado con éxito.');
+    } catch (error) {
+      console.error('Error al eliminar el directorio temporal:', error);
+    }
 
     res.json({ files: uploadedFiles, folderUrlWithId }); // Incluir la URL de la carpeta en la respuesta
   } catch (error) {
